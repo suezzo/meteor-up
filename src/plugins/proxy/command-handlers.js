@@ -35,11 +35,7 @@ export function leLogs(api) {
   args[0] = 'logs';
   const sessions = api.getSessions(['app']);
 
-  return api.getDockerLogs(
-    `${PROXY_CONTAINER_NAME}-letsencrypt`,
-    sessions,
-    args
-  );
+  return api.getDockerLogs(`${PROXY_CONTAINER_NAME}-letsencrypt`, sessions, args);
 }
 
 export function setup(api) {
@@ -58,8 +54,8 @@ export function setup(api) {
   list.executeScript('Setup Environment', {
     script: api.resolvePath(__dirname, 'assets/proxy-setup.sh'),
     vars: {
-      name: PROXY_CONTAINER_NAME
-    }
+      name: PROXY_CONTAINER_NAME,
+    },
   });
 
   list.copy('Pushing the Startup Script', {
@@ -67,27 +63,18 @@ export function setup(api) {
     dest: `/opt/${PROXY_CONTAINER_NAME}/config/start.sh`,
     vars: {
       appName: PROXY_CONTAINER_NAME,
-      letsEncryptEmail: config.ssl ? config.ssl.letsEncryptEmail : null
-    }
-  });
-
-  list.copy('Sending nginx config', {
-    src: config.nginxCustomConfig,
-    dest: `/opt/${PROXY_CONTAINER_NAME}/config/nginx-custom.conf`
+      letsEncryptEmail: config.ssl ? config.ssl.letsEncryptEmail : null,
+    },
   });
 
   let nginxServerConfig = '';
   if (config.nginxServerConfig) {
-    nginxServerConfig = fs.readFileSync(
-      api.resolvePath(api.getBasePath(), config.nginxServerConfig)
-    ).toString('utf8');
+    nginxServerConfig = fs.readFileSync(api.resolvePath(api.getBasePath(), config.nginxServerConfig)).toString('utf8');
   }
 
   let nginxLocationConfig = '';
   if (config.nginxLocationConfig) {
-    nginxLocationConfig = fs.readFileSync(
-      api.resolvePath(api.getBasePath(), config.nginxLocationConfig)
-    ).toString('utf8');
+    nginxLocationConfig = fs.readFileSync(api.resolvePath(api.getBasePath(), config.nginxLocationConfig)).toString('utf8');
   }
 
   list.executeScript('Pushing Nginx Config', {
@@ -99,48 +86,45 @@ export function setup(api) {
       locationConfig: nginxLocationConfig,
       domains,
       proxyName: PROXY_CONTAINER_NAME,
-      clientUploadLimit: config.clientUploadLimit || '10M'
-    }
+      clientUploadLimit: config.clientUploadLimit || '10M',
+    },
   });
 
   list.executeScript('Cleaning Up SSL Certificates', {
     script: api.resolvePath(__dirname, 'assets/ssl-cleanup.sh'),
     vars: {
       name: appName,
-      proxyName: PROXY_CONTAINER_NAME
-    }
+      proxyName: PROXY_CONTAINER_NAME,
+    },
   });
 
-  if (
-    config.ssl &&
-    !config.ssl.letsEncryptEmail &&
-    config.ssl.upload !== false &&
-    config.ssl.crt
-  ) {
+  if (config.ssl && !config.ssl.letsEncryptEmail && config.ssl.upload !== false && config.ssl.crt) {
     list.copy('Copying SSL Certificate Bundle', {
       src: api.resolvePath(api.getBasePath(), config.ssl.crt),
-      dest: `/opt/${appName}/config/bundle.crt`
+      dest: `/opt/${appName}/config/bundle.crt`,
     });
     list.copy('Copying SSL Private Key', {
       src: api.resolvePath(api.getBasePath(), config.ssl.key),
-      dest: `/opt/${appName}/config/private.key`
+      dest: `/opt/${appName}/config/private.key`,
     });
     list.executeScript('Setup SSL Certificates for Domains', {
       script: api.resolvePath(__dirname, 'assets/ssl-setup.sh'),
       vars: {
         appName,
         proxyName: PROXY_CONTAINER_NAME,
-        domains
-      }
+        domains,
+      },
     });
   }
 
   const sessions = api.getSessions(['app']);
 
-  return api.runTaskList(list, sessions, {
-    series: true,
-    verbose: api.getVerbose()
-  }).then(() => api.runCommand('proxy.start'));
+  return api
+    .runTaskList(list, sessions, {
+      series: true,
+      verbose: api.getVerbose(),
+    })
+    .then(() => api.runCommand('proxy.start'));
 }
 
 export function reconfigShared(api) {
@@ -158,7 +142,7 @@ export function reconfigShared(api) {
     console.log('No shared config properties are set. Resetting proxy to defaults.');
   }
 
-  const list = nodemiral.taskList('Configuring Proxy\'s Shared Settings');
+  const list = nodemiral.taskList("Configuring Proxy's Shared Settings");
 
   list.copy('Sending shared variables', {
     src: api.resolvePath(__dirname, 'assets/templates/shared-config.sh'),
@@ -166,8 +150,8 @@ export function reconfigShared(api) {
     vars: {
       httpPort: shared.httpPort,
       httpsPort: shared.httpsPort,
-      clientUploadLimit: shared.clientUploadLimit
-    }
+      clientUploadLimit: shared.clientUploadLimit,
+    },
   });
 
   const env = clone(shared.env);
@@ -176,32 +160,28 @@ export function reconfigShared(api) {
     src: api.resolvePath(__dirname, 'assets/templates/env.list'),
     dest: `/opt/${PROXY_CONTAINER_NAME}/config/env.list`,
     vars: {
-      env: env || {}
-    }
+      env: env || {},
+    },
   });
 
   const envLetsEncrypt = clone(shared.envLetsEncrypt);
 
-  list.copy('Sending let\'s encrypt environment variables', {
+  list.copy("Sending let's encrypt environment variables", {
     src: api.resolvePath(__dirname, 'assets/templates/env.list'),
     dest: `/opt/${PROXY_CONTAINER_NAME}/config/env_letsencrypt.list`,
     vars: {
-      env: envLetsEncrypt || {}
-    }
-  });
-
-  const sharedNginxConfig = shared.nginxConfig || api.resolvePath(__dirname, 'assets/proxy.conf');
-  list.copy('Sending nginx config', {
-    src: sharedNginxConfig,
-    dest: `/opt/${PROXY_CONTAINER_NAME}/config/nginx-default.conf`
+      env: envLetsEncrypt || {},
+    },
   });
 
   const sessions = api.getSessions(['app']);
 
-  return api.runTaskList(list, sessions, {
-    series: true,
-    verbose: api.verbose
-  }).then(() => api.runCommand('proxy.start'));
+  return api
+    .runTaskList(list, sessions, {
+      series: true,
+      verbose: api.verbose,
+    })
+    .then(() => api.runCommand('proxy.start'));
 }
 
 export function start(api) {
@@ -217,15 +197,15 @@ export function start(api) {
   list.executeScript('Start proxy', {
     script: api.resolvePath(__dirname, 'assets/proxy-start.sh'),
     vars: {
-      appName: PROXY_CONTAINER_NAME
-    }
+      appName: PROXY_CONTAINER_NAME,
+    },
   });
 
   const sessions = api.getSessions(['app']);
 
   return api.runTaskList(list, sessions, {
     series: true,
-    verbose: api.getVerbose()
+    verbose: api.getVerbose(),
   });
 }
 
@@ -237,8 +217,8 @@ export function stop(api) {
   list.executeScript('Stop proxy', {
     script: api.resolvePath(__dirname, 'assets/proxy-stop.sh'),
     vars: {
-      appName: PROXY_CONTAINER_NAME
-    }
+      appName: PROXY_CONTAINER_NAME,
+    },
   });
 
   const sessions = api.getSessions(['app']);
@@ -251,15 +231,9 @@ export async function nginxConfig(api) {
 
   const command = `docker exec ${PROXY_CONTAINER_NAME} cat /etc/nginx/conf.d/default.conf`;
   const { servers, app } = api.getConfig();
-  const serverObjects = Object.keys(app.servers)
-    .map(serverName => servers[serverName]);
+  const serverObjects = Object.keys(app.servers).map(serverName => servers[serverName]);
 
-
-  await Promise.all(
-    serverObjects.map(server =>
-      api.runSSHCommand(server, command)
-    )
-  ).then(results => {
+  await Promise.all(serverObjects.map(server => api.runSSHCommand(server, command))).then(results => {
     results.forEach(({ host, output }) => {
       console.log(`===== ${host} ======`);
       console.log(output);
@@ -269,19 +243,18 @@ export async function nginxConfig(api) {
 
 export async function status(api) {
   const config = api.getConfig();
-  const servers = Object.keys(config.app.servers)
-    .map(key => config.servers[key]);
+  const servers = Object.keys(config.app.servers).map(key => config.servers[key]);
   const lines = [];
   let overallColor = 'green';
 
   const collectorConfig = {
     nginxDocker: {
       command: `docker inspect ${PROXY_CONTAINER_NAME} --format "{{json .}}"`,
-      parser: 'json'
+      parser: 'json',
     },
     letsEncryptDocker: {
       command: `docker inspect ${PROXY_CONTAINER_NAME}-letsencrypt --format "{{json .}}"`,
-      parser: 'json'
+      parser: 'json',
     },
     certificateExpire: {
       command: `cd /opt/${PROXY_CONTAINER_NAME}/mounted-certs && find . -name '*.chain.pem' -exec echo '{}' \\; -exec openssl x509 -enddate -noout -in '{}' \\;`,
@@ -297,47 +270,46 @@ export async function status(api) {
         }
 
         return null;
-      }
-    }
+      },
+    },
   };
 
   const serverInfo = await api.getServerInfo(servers, collectorConfig);
 
-  Object.values(serverInfo).forEach(
-    ({ _host, nginxDocker, letsEncryptDocker, certificateExpire }) => {
-      lines.push(` - ${_host}:`);
-      lines.push('   - NGINX:');
-      lines.push(`     - Status: ${nginxDocker ? nginxDocker.State.Status : 'Stopped'}`);
+  Object.values(serverInfo).forEach(({ _host, nginxDocker, letsEncryptDocker, certificateExpire }) => {
+    lines.push(` - ${_host}:`);
+    lines.push('   - NGINX:');
+    lines.push(`     - Status: ${nginxDocker ? nginxDocker.State.Status : 'Stopped'}`);
 
-      if (nginxDocker && nginxDocker.State.Status !== 'running') {
-        overallColor = 'red';
-      }
+    if (nginxDocker && nginxDocker.State.Status !== 'running') {
+      overallColor = 'red';
+    }
 
-      if (nginxDocker) {
-        lines.push('     - Ports:');
-        Object.keys(nginxDocker.NetworkSettings.Ports || {}).forEach(key => {
-          if (key === '443/tcp') {
-            lines.push(`       - HTTPS: ${nginxDocker.NetworkSettings.Ports[key][0].HostPort}`);
-          } else if (key === '80/tcp') {
-            lines.push(`       - HTTP: ${nginxDocker.NetworkSettings.Ports[key][0].HostPort}`);
-          }
-        });
-      }
+    if (nginxDocker) {
+      lines.push('     - Ports:');
+      Object.keys(nginxDocker.NetworkSettings.Ports || {}).forEach(key => {
+        if (key === '443/tcp') {
+          lines.push(`       - HTTPS: ${nginxDocker.NetworkSettings.Ports[key][0].HostPort}`);
+        } else if (key === '80/tcp') {
+          lines.push(`       - HTTP: ${nginxDocker.NetworkSettings.Ports[key][0].HostPort}`);
+        }
+      });
+    }
 
-      lines.push('   - Let\'s Encrypt');
-      lines.push(`     - Status: ${letsEncryptDocker ? letsEncryptDocker.State.Status : 'Stopped'}`);
+    lines.push("   - Let's Encrypt");
+    lines.push(`     - Status: ${letsEncryptDocker ? letsEncryptDocker.State.Status : 'Stopped'}`);
 
-      if (letsEncryptDocker && letsEncryptDocker.State.Status !== 'running') {
-        overallColor = 'red';
-      }
+    if (letsEncryptDocker && letsEncryptDocker.State.Status !== 'running') {
+      overallColor = 'red';
+    }
 
-      if (certificateExpire && certificateExpire.length > 0) {
-        lines.push('     - Certificates');
-        Object.keys(certificateExpire).forEach(key => {
-          lines.push(`       - ${key}: ${certificateExpire[key]}`);
-        });
-      }
-    });
+    if (certificateExpire && certificateExpire.length > 0) {
+      lines.push('     - Certificates');
+      Object.keys(certificateExpire).forEach(key => {
+        lines.push(`       - ${key}: ${certificateExpire[key]}`);
+      });
+    }
+  });
 
   console.log(chalk[overallColor]('\n=> Reverse Proxy Status'));
   console.log(lines.join('\n'));
