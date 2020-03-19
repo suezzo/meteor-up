@@ -71,6 +71,11 @@ export function setup(api) {
     }
   });
 
+  list.copy('Sending nginx config', {
+    src: config.nginxCustomConfig,
+    dest: `/opt/${PROXY_CONTAINER_NAME}/config/nginx-custom.conf`
+  });
+
   let nginxServerConfig = '';
   if (config.nginxServerConfig) {
     nginxServerConfig = fs.readFileSync(
